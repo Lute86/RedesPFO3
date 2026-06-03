@@ -25,6 +25,7 @@ Worker1  Worker2  Worker3  Worker4   ← pool de threads (servidor.py)
 | `servidor.py` | Servidor TCP: publica en RabbitMQ, workers consumen y persisten en PostgreSQL |
 | `cliente.py` | Cliente TCP con reconexión y comandos especiales |
 | `requirements.txt` | Dependencias Python del proyecto |
+| `arquitectura_sistema_distribuido.svg` | Diagrama del proyecto |
 
 ---
 
@@ -78,7 +79,7 @@ brew services start postgresql@15
 ```bash
 docker run -d --name postgres \
   -e POSTGRES_PASSWORD=postgres \
-  -p 5433:5432 \
+  -p 5432:5432 \
   postgres:15
 ```
 
@@ -86,7 +87,7 @@ Crear la base de datos que usa el servidor:
 ```bash
 psql -U postgres -c "CREATE DATABASE pfo3;"
 
-or
+o
 
 docker exec -it postgres psql -U postgres -c "CREATE DATABASE pfo3;"
 ```
