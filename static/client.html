@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PFO 3 — Cliente Distribuido</title>
+  <link rel="stylesheet" href="client.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Sistema Distribuido</h1>
+      <p class="subtitle">PFO 3 · Cliente-Servidor con Flask, RabbitMQ y PostgreSQL</p>
+    </div>
+    <div class="status" id="status">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-text">conectando…</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel" id="form-panel">
+      <h2>Nueva tarea</h2>
+      <form id="task-form" autocomplete="off">
+        <input
+          type="text"
+          id="msg"
+          name="msg"
+          placeholder="ej: calc:2+2  ·  fib:10  ·  primes:50"
+          autofocus
+          required
+        >
+        <button type="submit">Enviar</button>
+      </form>
+      <div class="quick-commands" id="quick-commands">
+        <button type="button" data-cmd="calc:2+2">calc:2+2</button>
+        <button type="button" data-cmd="calc:10*(3+4)">calc:10*(3+4)</button>
+        <button type="button" data-cmd="factorial:10">factorial:10</button>
+        <button type="button" data-cmd="sqrt:144">sqrt:144</button>
+        <button type="button" data-cmd="primes:50">primes:50</button>
+        <button type="button" data-cmd="fib:15">fib:15</button>
+        <button type="button" data-cmd="/historial">/historial</button>
+      </div>
+      <details>
+        <summary>Comandos disponibles</summary>
+        <table class="help-table">
+          <thead><tr><th>Comando</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td><code>calc:&lt;expr&gt;</code></td><td>Evalúa una expresión matemática</td></tr>
+            <tr><td><code>factorial:&lt;n&gt;</code></td><td>Factorial de n (máx 1000)</td></tr>
+            <tr><td><code>sqrt:&lt;n&gt;</code></td><td>Raíz cuadrada de n</td></tr>
+            <tr><td><code>primes:&lt;n&gt;</code></td><td>Primos hasta n (máx 10000)</td></tr>
+            <tr><td><code>fib:&lt;n&gt;</code></td><td>n-ésimo Fibonacci (máx 1000)</td></tr>
+            <tr><td><code>/historial</code></td><td>Últimos 10 mensajes procesados</td></tr>
+          </tbody>
+        </table>
+      </details>
+    </section>
+
+    <section class="panel" id="tasks-panel">
+      <div class="panel-header">
+        <h2>Tareas enviadas</h2>
+        <button type="button" class="ghost" id="clear-tasks">Limpiar</button>
+      </div>
+      <ul id="tasks" class="task-list">
+        <li class="empty">Aún no enviaste ninguna tarea.</li>
+      </ul>
+    </section>
+
+    <section class="panel" id="history-panel">
+      <div class="panel-header">
+        <h2>Historial reciente</h2>
+        <button type="button" class="ghost" id="refresh-history">Actualizar</button>
+      </div>
+      <ul id="history" class="history-list">
+        <li class="empty">Cargando…</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      Arquitectura:
+      <code>Cliente (este navegador) → Flask :5000 → RabbitMQ → Workers (hilos) → PostgreSQL</code>
+    </p>
+  </footer>
+
+  <script src="client.js"></script>
+</body>
+</html>
