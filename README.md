@@ -79,7 +79,7 @@ instancia de Flask, no necesariamente la que recibió la petición.
 | `nginx.conf`            | Configuración del balanceador HTTP (modo `http`, no `stream`) |
 | `Makefile`              | Atajos para operar el sistema dockerizado (`make prod/stop/logs/…`) |
 | `arquitectura_sistema_distribuido.svg` | Diagrama del sistema (entregable del PFO) |
-| `subject`               | Enunciado original de la consigna |
+| `Subject.md`            | Enunciado original de la consigna |
 
 ---
 
