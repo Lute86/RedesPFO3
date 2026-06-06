@@ -183,7 +183,7 @@ instalación local típica, los defaults funcionan sin tocarlos:
 | `PG_USER`     | `postgres`    | Usuario PostgreSQL |
 | `PG_PASS`     | `postgres`    | Contraseña PostgreSQL |
 
-Si querés usar otras credenciales u hosts, exportalas antes de arrancar:
+Si se quieren usar otras credenciales u hosts, se exportan antes de arrancar:
 ```bash
 export RABBIT_USER=pfo3user RABBIT_PASS=pfo3pass
 export PG_USER=pfo3user PG_PASS=pfo3pass
@@ -222,12 +222,12 @@ Cliente web: http://localhost:5000/
 ### Múltiples instancias detrás de un balanceador (opcional)
 
 Para correr dos instancias de Flask y poner un Nginx manual delante,
-levantá cada una en un puerto distinto:
+se levanta cada una en un puerto distinto:
 ```bash
 SERVER_PORT=5001 python3 server.py &
 SERVER_PORT=5002 python3 server.py &
 ```
-Y configurá Nginx con un `upstream` HTTP que apunte a `127.0.0.1:5001`
+Y se configura Nginx con un `upstream` HTTP que apunte a `127.0.0.1:5001`
 y `127.0.0.1:5002` (ver el `nginx.conf` del modo dockerizado como
 referencia).
 
@@ -259,13 +259,13 @@ make stop          # detiene los contenedores
 make clean         # stop + elimina volúmenes e imágenes
 ```
 
-Tras `make prod`, esperá ~20–40 s la primera vez (Postgres y RabbitMQ
+Tras `make prod`, se esperan ~20–40 s la primera vez (Postgres y RabbitMQ
 tardan en inicializar; los servidores Flask reintentan la conexión
 automáticamente).
 
 ## B.3 Uso directo con `docker compose`
 
-Si no tenés `make`, los comandos equivalentes son:
+Si no se cuenta con `make`, los comandos equivalentes son:
 
 ```bash
 # Levantar todo
@@ -314,7 +314,7 @@ al mismo servidor Flask.
 
 ## C.1 Cliente web (navegador)
 
-Abrí `http://localhost:5000/` en el navegador. Vas a ver:
+Abrir `http://localhost:5000/` en el navegador. Se observa:
 
 - una barra de estado con la cantidad de workers activos,
 - un formulario para escribir tareas y chips con ejemplos rápidos,
@@ -322,7 +322,7 @@ Abrí `http://localhost:5000/` en el navegador. Vas a ver:
   hasta que el worker responda,
 - el historial reciente (últimos 10 mensajes).
 
-> Truco: si querés ver la UI sin levantar el backend, podés abrir
+> Nota: si se quiere ver la UI sin levantar el backend, se puede abrir
 > `static/client.html` directamente con doble click — los assets usan
 > rutas relativas para que el CSS y el JS carguen desde el disco.
 
@@ -340,7 +340,7 @@ python3 client.py                            # http://127.0.0.1:5000
 python3 client.py 192.168.0.10 5000          # host y puerto personalizados
 ```
 
-Desde `make` (si estás en modo dockerizado):
+Desde `make` (si se está en modo dockerizado):
 ```bash
 make client
 ```
