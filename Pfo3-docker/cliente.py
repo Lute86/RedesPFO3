@@ -2,12 +2,15 @@
 cliente.py — Cliente para el servidor distribuido
 PFO 3: Rediseño como Sistema Distribuido
 
-El cliente no interactúa directamente con RabbitMQ ni PostgreSQL;
-se comunica exclusivamente con el servidor vía socket TCP.
+Funcionalidades:
+  - Envía tareas al servidor y muestra las respuestas de los workers
+  - Soporta el comando /historial para consultar mensajes previos
+  - Menú de reintento si la conexión falla
+  - Salida limpia con 'éxito' o Ctrl+C
 
 Uso:
   python3 cliente.py                        # conecta a 127.0.0.1:5000
-  python3 cliente.py <host> <puerto>
+  python3 cliente.py <host> <puerto>        # host puede ser IP o nombre
 """
 
 import socket
@@ -22,7 +25,7 @@ PORT = 5000
 # Argumentos
 # ──────────────────────────────────────────────
 if len(sys.argv) == 1:
-    pass
+    pass  # usa HOST y PORT por defecto
 
 elif len(sys.argv) == 3:
     host_input = sys.argv[1]
@@ -53,6 +56,7 @@ else:
 # Helpers
 # ──────────────────────────────────────────────
 def ask_port() -> int:
+    """Solicita un puerto válido por teclado, reintentando si es inválido."""
     while True:
         raw = input("Nuevo puerto (0-65535): ").strip()
         try:
@@ -61,10 +65,11 @@ def ask_port() -> int:
                 return port
             raise ValueError
         except ValueError:
-            print(f"  '{raw}' no es un puerto válido.")
+            print(f"  '{raw}' no es un puerto válido, ingresá un entero entre 0 y 65535.")
 
 
 def connect(host: str, port: int) -> tuple[socket.socket, int]:
+    """Intenta conectar; ofrece menú de reintento si falla."""
     while True:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -83,21 +88,11 @@ def connect(host: str, port: int) -> tuple[socket.socket, int]:
 
 def print_help() -> None:
     print(
-        "\nTareas disponibles:\n"
-        "  calc:<expr>       Evalúa una expresión aritmética\n"
-        "                    ej: calc:2+2   calc:10*(3+4)   calc:2**8\n"
-        "  factorial:<n>     Calcula n!\n"
-        "                    ej: factorial:10\n"
-        "  sqrt:<n>          Raíz cuadrada\n"
-        "                    ej: sqrt:144\n"
-        "  primes:<n>        Números primos hasta n (máx 10000)\n"
-        "                    ej: primes:50\n"
-        "  fib:<n>           N-ésimo número de Fibonacci (máx 1000)\n"
-        "                    ej: fib:10\n"
-        "\nComandos especiales:\n"
-        "  /historial        Muestra las últimas tareas guardadas en PostgreSQL\n"
-        "  éxito             Cierra la conexión y sale\n"
-        "  Ctrl+C            Salida forzada\n"
+        "\nComandos disponibles:\n"
+        "  /historial   — muestra los últimos mensajes procesados\n"
+        "  éxito        — cierra la conexión y sale\n"
+        "  Ctrl+C       — cierre forzado\n"
+        "  (cualquier otro texto se envía como tarea al servidor)\n"
     )
 
 # ──────────────────────────────────────────────
@@ -107,12 +102,14 @@ sock, PORT = connect(HOST, PORT)
 print(f"Conectado a {HOST}:{PORT}.")
 print_help()
 
+# Evento que indica que el servidor cerró la conexión
 disconnected = threading.Event()
 
 # ──────────────────────────────────────────────
-# Hilo receptor
+# Hilo receptor — muestra respuestas de los workers
 # ──────────────────────────────────────────────
 def receive() -> None:
+    """Lee líneas del servidor e imprime la respuesta del worker."""
     with sock.makefile("r", encoding="utf-8") as reader:
         for line in reader:
             print(line, end="", flush=True)
@@ -134,6 +131,7 @@ while not disconnected.is_set():
     if disconnected.is_set():
         break
 
+    # Cierre limpio por palabra clave
     if msg.strip().lower() == "éxito":
         try:
             sock.shutdown(socket.SHUT_RDWR)
@@ -142,6 +140,7 @@ while not disconnected.is_set():
             pass
         break
 
+    # Enviar tarea (incluye comandos como /historial)
     try:
         sock.sendall((msg + "\n").encode("utf-8"))
     except OSError:

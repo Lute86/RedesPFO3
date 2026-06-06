@@ -29,6 +29,7 @@ Uso:
   python3 servidor.py [puerto]     # por defecto 5000
 """
 
+import os
 import socket
 import sys
 import signal
@@ -41,21 +42,27 @@ import psycopg2
 from psycopg2 import pool as pg_pool
 
 # ──────────────────────────────────────────────
-# Configuración
+# Configuración — variables de entorno con fallback
 # ──────────────────────────────────────────────
-HOST       = "127.0.0.1"
-PORT       = 5000
-NUM_WORKERS = 4
-QUEUE_NAME  = "tareas"
+HOST        = os.environ.get("SERVER_HOST", "0.0.0.0")
+PORT        = int(os.environ.get("SERVER_PORT", "5000"))
+NUM_WORKERS = int(os.environ.get("NUM_WORKERS", "4"))
+QUEUE_NAME  = os.environ.get("QUEUE_NAME", "tareas")
 
 # RabbitMQ
-RABBIT_HOST = "localhost"
-RABBIT_PORT = 5672
-RABBIT_USER = "guest"
-RABBIT_PASS = "guest"
+RABBIT_HOST = os.environ.get("RABBIT_HOST", "localhost")
+RABBIT_PORT = int(os.environ.get("RABBIT_PORT", "5672"))
+RABBIT_USER = os.environ.get("RABBIT_USER", "guest")
+RABBIT_PASS = os.environ.get("RABBIT_PASS", "guest")
 
 # PostgreSQL
-PG_DSN = "host=localhost port=5432 dbname=pfo3 user=postgres password=postgres"
+PG_DSN = (
+    f"host={os.environ.get('PG_HOST', 'localhost')} "
+    f"port={os.environ.get('PG_PORT', '5432')} "
+    f"dbname={os.environ.get('PG_DB', 'pfo3')} "
+    f"user={os.environ.get('PG_USER', 'postgres')} "
+    f"password={os.environ.get('PG_PASS', 'postgres')}"
+)
 
 # ──────────────────────────────────────────────
 # Argumentos
@@ -76,35 +83,39 @@ if len(sys.argv) == 2:
 # ──────────────────────────────────────────────
 # PostgreSQL — connection pool
 # ──────────────────────────────────────────────
-def init_db() -> pg_pool.ThreadedConnectionPool:
+def init_db(retries: int = 10, delay: float = 3.0) -> pg_pool.ThreadedConnectionPool:
     """
-    Crea la tabla 'mensajes' si no existe y devuelve un pool
-    de conexiones PostgreSQL (mínimo 1, máximo NUM_WORKERS+2).
+    Crea la tabla mensajes si no existe y devuelve un pool de conexiones.
+    Reintenta hasta retries veces para tolerar el arranque de Docker.
     """
-    try:
-        db_pool = pg_pool.ThreadedConnectionPool(
-            minconn=1,
-            maxconn=NUM_WORKERS + 2,
-            dsn=PG_DSN,
-        )
-        conn = db_pool.getconn()
-        with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS mensajes (
-                    id          SERIAL PRIMARY KEY,
-                    contenido   TEXT        NOT NULL,
-                    fecha_envio TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    ip_cliente  TEXT        NOT NULL,
-                    worker_id   INTEGER     NOT NULL
-                )
-            """)
-        conn.commit()
-        db_pool.putconn(conn)
-        print("PostgreSQL: tabla 'mensajes' lista.")
-        return db_pool
-    except psycopg2.Error as e:
-        print(f"Error PostgreSQL: {e}", file=sys.stderr)
-        sys.exit(1)
+    import time
+    for attempt in range(1, retries + 1):
+        try:
+            db_pool = pg_pool.ThreadedConnectionPool(
+                minconn=1,
+                maxconn=NUM_WORKERS + 2,
+                dsn=PG_DSN,
+            )
+            conn = db_pool.getconn()
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS mensajes (
+                        id          SERIAL PRIMARY KEY,
+                        contenido   TEXT        NOT NULL,
+                        fecha_envio TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        ip_cliente  TEXT        NOT NULL,
+                        worker_id   INTEGER     NOT NULL
+                    )
+                """)
+            conn.commit()
+            db_pool.putconn(conn)
+            print("PostgreSQL: tabla mensajes lista.")
+            return db_pool
+        except psycopg2.Error as e:
+            print(f"PostgreSQL no disponible (intento {attempt}/{retries}): {e}", file=sys.stderr)
+            if attempt == retries:
+                sys.exit(1)
+            time.sleep(delay)
 
 
 def save_message(db_pool: pg_pool.ThreadedConnectionPool,
@@ -145,8 +156,9 @@ def get_history(db_pool: pg_pool.ThreadedConnectionPool,
 # ──────────────────────────────────────────────
 # RabbitMQ — publicar una tarea
 # ──────────────────────────────────────────────
-def make_rabbit_connection() -> pika.BlockingConnection:
-    """Abre una conexión AMQP a RabbitMQ."""
+def make_rabbit_connection(retries: int = 10, delay: float = 3.0) -> pika.BlockingConnection:
+    """Abre una conexion AMQP a RabbitMQ con reintentos para Docker."""
+    import time
     credentials = pika.PlainCredentials(RABBIT_USER, RABBIT_PASS)
     params = pika.ConnectionParameters(
         host=RABBIT_HOST,
@@ -154,7 +166,14 @@ def make_rabbit_connection() -> pika.BlockingConnection:
         credentials=credentials,
         heartbeat=60,
     )
-    return pika.BlockingConnection(params)
+    for attempt in range(1, retries + 1):
+        try:
+            return pika.BlockingConnection(params)
+        except Exception as e:
+            print(f"RabbitMQ no disponible (intento {attempt}/{retries}): {e}", file=sys.stderr)
+            if attempt == retries:
+                raise
+            time.sleep(delay)
 
 
 def publish_task(channel: pika.adapters.blocking_connection.BlockingChannel,
@@ -287,7 +306,7 @@ def process_task(body: bytes,
         resultado = execute_task(msg)
         # 2. Persistir tarea en PostgreSQL
         fecha = save_message(db_pool, msg, ip, worker_id)
-        # 3. Responder al cliente con el resultado y metadatos del worker
+        # 3. Responder al cliente con resultado y metadatos del worker
         respuesta = f"[Worker-{worker_id} | {fecha}] {resultado}"
 
     if sock:
