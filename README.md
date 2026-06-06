@@ -1,10 +1,10 @@
-# PFO 3 — Sistema Distribuido Cliente-Servidor (variante Flask)
+# PFO 3 — Sistema Distribuido Cliente-Servidor (Flask + web/cli client)
 
 ## Introducción
 
 Esta entrega corresponde al **PFO 3: Rediseño como Sistema Distribuido
-(Cliente-Servidor)**. El objetivo es transformar un sistema cliente-servidor
-convencional en una arquitectura distribuida que cumpla con las consignas
+(Cliente-Servidor)**. El objetivo es implementar un sistema cliente-servidor
+con una arquitectura distribuida que cumpla con las consignas
 del enunciado:
 
 - **Clientes** (móviles, web) — interfaz web servida por Flask y cliente
@@ -58,10 +58,9 @@ Flask :5000  (srv_1)  Flask :5000  (srv_2)
    └─ task_results  (correlación cliente ↔ worker por task_id)
 ```
 
-El `task_id` (UUID generado en el POST inicial) es la clave de correlación:
-reemplaza al descriptor de archivo del socket TCP de la versión anterior
-y permite que la respuesta de un worker sea leída por **cualquier**
-instancia de Flask (no necesariamente la que recibió la petición).
+El `task_id` (UUID generado en el POST inicial) es la clave de correlación
+que permite que la respuesta de un worker sea leída por **cualquier**
+instancia de Flask, no necesariamente la que recibió la petición.
 
 ---
 
@@ -81,7 +80,6 @@ instancia de Flask (no necesariamente la que recibió la petición).
 | `Makefile`              | Atajos para operar el sistema dockerizado (`make prod/stop/logs/…`) |
 | `arquitectura_sistema_distribuido.svg` | Diagrama del sistema (entregable del PFO) |
 | `subject`               | Enunciado original de la consigna |
-| `AGENTS.md`             | Notas internas para agentes sobre el repositorio |
 
 ---
 
@@ -386,12 +384,12 @@ recibe `task_id` → `GET /api/tasks/<id>` cada 500 ms hasta `status=done`.
 
 | Componente en el código | Tecnología | Rol en el sistema |
 |---|---|---|
-| Flask `app.route`             | Flask / HTTP   | API JSON + cliente web (reemplaza al socket TCP) |
+| Flask `app.route`             | Flask / HTTP   | API JSON y cliente web |
 | `pika.BlockingConnection`     | RabbitMQ / AMQP| Cola de mensajes entre la API y los workers |
 | `psycopg2.ThreadedConnectionPool` | PostgreSQL | Almacenamiento persistente (mensajes + resultados) |
 | `threading.Thread` por worker | —             | Hilo de consumo de RabbitMQ; un worker por hilo |
 | `basic_qos(prefetch_count=1)` | RabbitMQ      | Distribuye tareas equitativamente entre workers |
 | `delivery_mode=2`             | RabbitMQ      | Mensajes persistentes (sobreviven reinicios) |
-| `task_id` (UUID)              | correlación    | Asocia la respuesta de un worker con la petición del cliente (reemplaza al `fd` del socket TCP) |
+| `task_id` (UUID)              | correlación    | Asocia la respuesta de un worker con la petición HTTP del cliente |
 | `publisher_lock`              | pika          | Protege el canal publicador compartido entre los request threads de Flask |
 | Nginx `upstream` + `least_conn` | HTTP proxy | Balanceador de carga HTTP entre las dos instancias de Flask |
