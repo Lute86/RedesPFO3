@@ -21,8 +21,13 @@ del enunciado:
   cliente↔worker por `task_id`, lo que permite que cualquier instancia
   de Flask resuelva cualquier `task_id`).
 
-Hay dos formas equivalentes de correr el sistema:
+Hay tres formas de correr el sistema:
 
+- **Versión simple** — variante liviana sin RabbitMQ ni PostgreSQL: usa
+  `queue.Queue` como cola en memoria y SQLite para persistir. Ideal para
+  entender los conceptos del sistema distribuido (pool de workers, cola
+  de mensajes, persistencia) sin levantar infraestructura. Ver
+  [`version_simple/README.md`](version_simple/README.md).
 - **Modo manual** — RabbitMQ y PostgreSQL instalados en el host, una o más
   instancias de `server.py` corriendo directamente con `python3`.
 - **Modo dockerizado** — todo orquestado con Docker Compose: Postgres,
